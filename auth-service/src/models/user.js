@@ -43,7 +43,6 @@ module.exports = (sequelize, DataTypes) => {
     },
   });
 
-  // Instance method to check password
   User.prototype.checkPassword = async function (password) {
     return bcrypt.compare(password, this.password);
   };

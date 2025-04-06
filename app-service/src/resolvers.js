@@ -6,7 +6,6 @@ const { Op } = require('sequelize');
 
 const resolvers = {
   Query: {
-    // User queries
     me: (_, __, { user }) => {
       if (!user) {
         throw new AuthenticationError('You must be logged in');
@@ -15,39 +14,30 @@ const resolvers = {
     },
     
     users: async (_, __, { user }) => {
-      // Anyone can see the list of users
       return db.User.findAll();
     },
     
     user: async (_, { id }, { user }) => {
-      // Anyone can see user details
       return db.User.findByPk(id);
     },
     
-    // Class queries
     classes: async (_, { sortBy }, { user }) => {
-      // Anyone can see classes
       const order = sortBy ? [[sortBy, 'ASC']] : [['name', 'ASC']];
       return db.Class.findAll({ order });
     },
     
     class: async (_, { id }, { user }) => {
-      // Anyone can see class details
       return db.Class.findByPk(id);
     },
     
-    // Course queries
     courses: async (_, __, { user }) => {
-      // Anyone can see courses
       return db.Course.findAll();
     },
     
     course: async (_, { id }, { user }) => {
-      // Anyone can see course details
       return db.Course.findByPk(id);
     },
     
-    // Grade queries
     myGrades: async (_, { courseIds }, { user }) => {
       if (!user) {
         throw new AuthenticationError('You must be logged in');
@@ -67,7 +57,6 @@ const resolvers = {
         throw new AuthenticationError('You must be logged in');
       }
       
-      // Only professors can see other students' grades
       if (user.role !== 'professor' && user.id !== studentId) {
         throw new ForbiddenError('Only professors can view other students\' grades');
       }
@@ -81,9 +70,7 @@ const resolvers = {
       return db.Grade.findAll({ where });
     },
     
-    // Statistics queries
     classGradeStats: async (_, { classId }, { user }) => {
-      // Only professors can see class grade statistics
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can view class grade statistics');
       }
@@ -93,11 +80,9 @@ const resolvers = {
         throw new UserInputError('Class not found');
       }
       
-      // Get all courses for this class
       const courses = await db.Course.findAll({ where: { ClassId: classId } });
       const courseIds = courses.map(course => course.id);
       
-      // Get all grades for these courses
       const grades = await db.Grade.findAll({
         where: { CourseId: { [Op.in]: courseIds } },
       });
@@ -110,7 +95,6 @@ const resolvers = {
     },
     
     courseGradeStats: async (_, { courseId }, { user }) => {
-      // Only professors can see course grade statistics
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can view course grade statistics');
       }
@@ -120,7 +104,6 @@ const resolvers = {
         throw new UserInputError('Course not found');
       }
       
-      // Get all grades for this course
       const grades = await db.Grade.findAll({ where: { CourseId: courseId } });
       
       return {
@@ -131,7 +114,6 @@ const resolvers = {
     },
     
     studentGradeStats: async (_, { studentId }, { user }) => {
-      // Only professors or the student themselves can see student grade statistics
       if (!user || (user.role !== 'professor' && user.id !== studentId)) {
         throw new ForbiddenError('Only professors or the student themselves can view student grade statistics');
       }
@@ -141,7 +123,6 @@ const resolvers = {
         throw new UserInputError('Student not found');
       }
       
-      // Get all grades for this student
       const grades = await db.Grade.findAll({ where: { UserId: studentId } });
       
       return {
@@ -153,13 +134,11 @@ const resolvers = {
   },
   
   Mutation: {
-    // User mutations
     updateUser: async (_, { id, email, pseudo, password }, { user }) => {
       if (!user) {
         throw new AuthenticationError('You must be logged in');
       }
       
-      // Users can only update themselves
       if (user.id !== id) {
         throw new ForbiddenError('You can only update your own account');
       }
@@ -183,7 +162,6 @@ const resolvers = {
         throw new AuthenticationError('You must be logged in');
       }
       
-      // Users can only delete themselves
       if (user.id !== id) {
         throw new ForbiddenError('You can only delete your own account');
       }
@@ -197,9 +175,7 @@ const resolvers = {
       return true;
     },
     
-    // Class mutations
     createClass: async (_, { name, description, year }, { user }) => {
-      // Only professors can create classes
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can create classes');
       }
@@ -208,7 +184,6 @@ const resolvers = {
     },
     
     updateClass: async (_, { id, name, description, year }, { user }) => {
-      // Only professors can update classes
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can update classes');
       }
@@ -228,7 +203,6 @@ const resolvers = {
     },
     
     deleteClass: async (_, { id }, { user }) => {
-      // Only professors can delete classes
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can delete classes');
       }
@@ -238,7 +212,6 @@ const resolvers = {
         throw new UserInputError('Class not found');
       }
       
-      // Check if there are students in this class
       const studentCount = await classToDelete.countUsers();
       if (studentCount > 0) {
         throw new ForbiddenError('Cannot delete a class with students');
@@ -249,7 +222,6 @@ const resolvers = {
     },
     
     addStudentToClass: async (_, { classId, studentId }, { user }) => {
-      // Only professors can add students to classes
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can add students to classes');
       }
@@ -272,9 +244,7 @@ const resolvers = {
       return classObj;
     },
     
-    // Course mutations
     createCourse: async (_, { name, description, credits, classId }, { user }) => {
-      // Only professors can create courses
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can create courses');
       }
@@ -288,7 +258,6 @@ const resolvers = {
     },
     
     updateCourse: async (_, { id, name, description, credits, classId }, { user }) => {
-      // Only professors can update courses
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can update courses');
       }
@@ -315,7 +284,6 @@ const resolvers = {
     },
     
     deleteCourse: async (_, { id }, { user }) => {
-      // Only professors can delete courses
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can delete courses');
       }
@@ -329,9 +297,7 @@ const resolvers = {
       return true;
     },
     
-    // Grade mutations
     createGrade: async (_, { value, comment, courseId, studentId }, { user }) => {
-      // Only professors can create grades
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can create grades');
       }
@@ -359,7 +325,6 @@ const resolvers = {
     },
     
     updateGrade: async (_, { id, value, comment }, { user }) => {
-      // Only professors can update grades
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can update grades');
       }
@@ -378,7 +343,6 @@ const resolvers = {
     },
     
     deleteGrade: async (_, { id }, { user }) => {
-      // Only professors can delete grades
       if (!user || user.role !== 'professor') {
         throw new ForbiddenError('Only professors can delete grades');
       }
@@ -393,7 +357,6 @@ const resolvers = {
     },
   },
   
-  // Field resolvers
   User: {
     classes: async (user) => {
       return user.getClasses();

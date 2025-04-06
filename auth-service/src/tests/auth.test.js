@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { verifyToken, authenticate, authorize } = require('../utils/auth');
 
-// Mock jwt
 jest.mock('jsonwebtoken');
 
 describe('Auth Utils', () => {

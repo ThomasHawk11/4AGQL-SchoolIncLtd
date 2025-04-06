@@ -1,7 +1,5 @@
 const { calculateGradeStats } = require('../utils/gradeUtils');
 
-// Extract the calculateGradeStats function from resolvers.js to a separate file for testing
-// This is just a mock for the test
 jest.mock('../utils/gradeUtils', () => ({
   calculateGradeStats: jest.fn((grades) => {
     if (!grades || grades.length === 0) {

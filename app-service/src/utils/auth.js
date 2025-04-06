@@ -5,14 +5,12 @@ const { AuthenticationError } = require('apollo-server-express');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key_change_in_production';
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:4001';
 
-// Verify JWT token
 const verifyToken = (token) => {
   try {
     if (!token) {
       throw new AuthenticationError('Authentication token is required');
     }
     
-    // Remove 'Bearer ' prefix if present
     const tokenValue = token.startsWith('Bearer ') ? token.slice(7) : token;
     
     return jwt.verify(tokenValue, JWT_SECRET);
@@ -28,12 +26,8 @@ const authenticate = async (token) => {
   }
   
   try {
-    // Verify token locally first
     const decoded = verifyToken(token);
     
-    // Optionally verify with auth service
-    // This is useful if you need to check if the token has been revoked
-    // or if you need additional user information
     try {
       const response = await axios.post(`${AUTH_SERVICE_URL}/graphql`, {
         query: `
@@ -57,7 +51,6 @@ const authenticate = async (token) => {
       
       return response.data.data.verifyToken;
     } catch (error) {
-      // If auth service is unavailable, fall back to local verification
       return decoded;
     }
   } catch (error) {
