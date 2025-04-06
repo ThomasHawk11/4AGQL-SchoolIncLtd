@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Authentication Service
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "4001:4001"
+    environment:
+      - NODE_ENV=development
+      - PORT=4001
+      - JWT_SECRET=your_jwt_secret_key_change_in_production
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_NAME=schoolinc
+    depends_on:
+      - mysql
+    volumes:
+      - ./auth-service:/app
+      - /app/node_modules
+    networks:
+      - schoolinc-network
+
+  # Main Application Service
+  app-service:
+    build: ./app-service
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - AUTH_SERVICE_URL=http://auth-service:4001
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_NAME=schoolinc
+    depends_on:
+      - mysql
+      - auth-service
+    volumes:
+      - ./app-service:/app
+      - /app/node_modules
+    networks:
+      - schoolinc-network
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=schoolinc
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - schoolinc-network
+
+  # PHPMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=mysql
+      - PMA_USER=root
+      - PMA_PASSWORD=password
+    depends_on:
+      - mysql
+    networks:
+      - schoolinc-network
+
+networks:
+  schoolinc-network:
+    driver: bridge
+
+volumes:
+  mysql-data:

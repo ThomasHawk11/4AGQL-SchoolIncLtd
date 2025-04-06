@@ -1,0 +1,762 @@
+{
+	"info": {
+		"_postman_id": "7e8f9a10-b5d2-4c3e-8f6a-1a2b3c4d5e6f",
+		"name": "SchooInc GraphQL API",
+		"description": "Collection pour tester l'API GraphQL de SchooInc avec ses deux services : authentification et application principale.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4001/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4001",
+							"path": [
+								"health"
+							]
+						},
+						"description": "Vérifier si le service d'authentification est en cours d'exécution."
+					},
+					"response": []
+				},
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"mutation { register(email: \\\"newuser@schoolinc.com\\\", pseudo: \\\"New User\\\", password: \\\"password123\\\", role: student) { token user { id email pseudo role } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4001/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4001",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Enregistrer un nouvel utilisateur avec le rôle 'student'."
+					},
+					"response": []
+				},
+				{
+					"name": "Register Professor",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"mutation { register(email: \\\"newprof@schoolinc.com\\\", pseudo: \\\"New Professor\\\", password: \\\"password123\\\", role: professor) { token user { id email pseudo role } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4001/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4001",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Enregistrer un nouvel utilisateur avec le rôle 'professor'."
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"if (jsonData.data && jsonData.data.login && jsonData.data.login.token) {",
+									"    pm.environment.set(\"authToken\", jsonData.data.login.token);",
+									"    pm.environment.set(\"userId\", jsonData.data.login.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"mutation { login(email: \\\"professor1@schoolinc.com\\\", password: \\\"password123\\\") { token user { id email pseudo role } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4001/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4001",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Se connecter avec un utilisateur existant (professeur). Le token est automatiquement sauvegardé dans les variables d'environnement."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { verifyToken(token: \\\"{{authToken}}\\\") { id email pseudo role } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4001/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4001",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Vérifier si un token est valide."
+					},
+					"response": []
+				}
+			],
+			"description": "Requêtes pour le service d'authentification."
+		},
+		{
+			"name": "App Service",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4000/health",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"health"
+							]
+						},
+						"description": "Vérifier si le service d'application est en cours d'exécution."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { me { id email pseudo role classes { id name } grades { id value course { name } } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Obtenir les informations de l'utilisateur actuellement connecté."
+					},
+					"response": []
+				},
+				{
+					"name": "List All Users",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { users { id email pseudo role } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Lister tous les utilisateurs."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { user(id: \\\"3\\\") { id email pseudo role } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Obtenir les détails d'un utilisateur spécifique par son ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"mutation { updateUser(id: \\\"{{userId}}\\\", pseudo: \\\"Updated Name\\\") { id pseudo } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Mettre à jour les informations de l'utilisateur connecté."
+					},
+					"response": []
+				},
+				{
+					"name": "List All Classes",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { classes(sortBy: \\\"name\\\") { id name description year students { id pseudo } courses { id name } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Lister toutes les classes triées par nom."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Class by ID",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { class(id: \\\"1\\\") { id name description year students { id pseudo } courses { id name } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Obtenir les détails d'une classe spécifique par son ID."
+					},
+					"response": []
+				},
+				{
+					"name": "List All Courses",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { courses { id name description credits class { id name } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Lister tous les cours."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Course by ID",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { course(id: \\\"1\\\") { id name description credits class { id name } grades { id value student { pseudo } } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Obtenir les détails d'un cours spécifique par son ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Get My Grades",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { myGrades { id value comment date course { id name } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Obtenir les notes de l'utilisateur connecté."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Student Grades (Professor Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { studentGrades(studentId: \\\"3\\\") { id value comment date course { id name } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Obtenir les notes d'un étudiant spécifique (réservé aux professeurs)."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Class (Professor Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"mutation { createClass(name: \\\"Physics 101\\\", description: \\\"Introduction to Physics\\\", year: 2025) { id name description year } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Créer une nouvelle classe (réservé aux professeurs)."
+					},
+					"response": []
+				},
+				{
+					"name": "Add Student to Class (Professor Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"mutation { addStudentToClass(classId: \\\"1\\\", studentId: \\\"3\\\") { id name students { id pseudo } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Ajouter un étudiant à une classe (réservé aux professeurs)."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Course (Professor Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"mutation { createCourse(name: \\\"Advanced Programming\\\", description: \\\"Learn advanced programming techniques\\\", credits: 5, classId: \\\"1\\\") { id name description credits } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Créer un nouveau cours (réservé aux professeurs)."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Grade (Professor Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"mutation { createGrade(value: 16, comment: \\\"Excellent work\\\", courseId: \\\"1\\\", studentId: \\\"3\\\") { id value comment } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Créer une nouvelle note pour un étudiant (réservé aux professeurs)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Class Grade Stats (Professor Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { classGradeStats(classId: \\\"1\\\") { className stats { average median lowest highest count } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Obtenir les statistiques de notes pour une classe (réservé aux professeurs)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Course Grade Stats (Professor Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { courseGradeStats(courseId: \\\"1\\\") { courseName stats { average median lowest highest count } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Obtenir les statistiques de notes pour un cours (réservé aux professeurs)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Student Grade Stats (Professor Only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{authToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"query\": \"query { studentGradeStats(studentId: \\\"3\\\") { studentName stats { average median lowest highest count } } }\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:4000/graphql",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"graphql"
+							]
+						},
+						"description": "Obtenir les statistiques de notes pour un étudiant (réservé aux professeurs)."
+					},
+					"response": []
+				}
+			],
+			"description": "Requêtes pour le service d'application principale."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "authToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
