@@ -96,6 +96,7 @@ const Grades = () => {
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [selectedCourseFilter, setSelectedCourseFilter] = useState('');
   const [formData, setFormData] = useState({
     value: '',
     comment: '',
@@ -121,18 +122,24 @@ const Grades = () => {
     setPage(0);
   };
 
-  useEffect(() => {
-    if (formData.courseId && data) {
-      const selectedCourse = data.courses.find(c => c.id === formData.courseId);
-      if (selectedCourse?.class?.students) {
-        setAvailableStudents(selectedCourse.class.students);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'courseId') {
+      setFormData(prev => ({ ...prev, studentId: '' }));
+      if (value && data) {
+        const selectedCourse = data.courses.find(c => c.id === value);
+        if (selectedCourse?.class?.students) {
+          setAvailableStudents(selectedCourse.class.students);
+        } else {
+          setAvailableStudents([]);
+        }
       } else {
         setAvailableStudents([]);
       }
-    } else {
-      setAvailableStudents([]);
     }
-  }, [formData.courseId, data]);
+  };
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -162,6 +169,26 @@ const Grades = () => {
         <Grid item xs>
           <Typography variant="h4">Grades</Typography>
         </Grid>
+        <Grid item>
+          <FormControl sx={{ minWidth: 200, mr: 2 }}>
+            <InputLabel>Filter by Course</InputLabel>
+            <Select
+              value={selectedCourseFilter}
+              label="Filter by Course"
+              onChange={(e) => {
+                setSelectedCourseFilter(e.target.value);
+                setPage(0);
+              }}
+            >
+              <MenuItem value="">All Courses</MenuItem>
+              {data?.courses.map((course) => (
+                <MenuItem key={course.id} value={course.id}>
+                  {course.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
         {isProfessor && (
           <Grid item>
             <Button 
@@ -190,6 +217,7 @@ const Grades = () => {
             </TableHead>
             <TableBody>
               {data?.myGrades
+                .filter(grade => !selectedCourseFilter || grade.course.id === selectedCourseFilter)
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((grade) => (
                   <TableRow key={grade.id}>
@@ -205,7 +233,7 @@ const Grades = () => {
                       />
                     </TableCell>
                     <TableCell>{grade.comment || '-'}</TableCell>
-                    <TableCell>{new Date(grade.date).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(parseInt(grade.date)).toLocaleDateString()}</TableCell>
                   </TableRow>
               ))}
             </TableBody>
@@ -214,7 +242,7 @@ const Grades = () => {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={data?.myGrades?.length || 0}
+          count={data?.myGrades?.filter(grade => !selectedCourseFilter || grade.course.id === selectedCourseFilter).length || 0}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
@@ -222,30 +250,33 @@ const Grades = () => {
         />
       </Paper>
 
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <Dialog open={open} onClose={handleClose}>
         <DialogTitle>Add New Grade</DialogTitle>
         <DialogContent>
-          <FormControl fullWidth margin="dense">
+          <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>Course</InputLabel>
             <Select
+              name="courseId"
               value={formData.courseId}
               label="Course"
-              onChange={(e) => setFormData({ ...formData, courseId: e.target.value, studentId: '' })}
+              onChange={handleInputChange}
             >
-              {data?.courses.map((course) => (
+              {data.courses.map((course) => (
                 <MenuItem key={course.id} value={course.id}>
-                  {course.name} - {course.class?.name}
+                  {course.name}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
 
-          <FormControl fullWidth margin="dense" disabled={!formData.courseId}>
+          <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>Student</InputLabel>
             <Select
+              name="studentId"
               value={formData.studentId}
               label="Student"
-              onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+              onChange={handleInputChange}
+              disabled={!formData.courseId}
             >
               {availableStudents.map((student) => (
                 <MenuItem key={student.id} value={student.id}>

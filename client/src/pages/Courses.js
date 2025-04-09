@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, gql } from '@apollo/client';
+import { useAuth } from '../components/AuthContext';
 import {
   Container,
   Grid,
@@ -50,6 +51,9 @@ const CREATE_COURSE = gql`
 `;
 
 const Courses = () => {
+  const { user } = useAuth();
+  const isProfessor = user?.role === 'professor';
+
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -91,11 +95,13 @@ const Courses = () => {
         <Grid item xs>
           <Typography variant="h4">Courses</Typography>
         </Grid>
-        <Grid item>
-          <Button variant="contained" onClick={handleOpen}>
-            Add New Course
-          </Button>
-        </Grid>
+        {isProfessor && (
+          <Grid item>
+            <Button variant="contained" onClick={handleOpen}>
+              Add New Course
+            </Button>
+          </Grid>
+        )}
       </Grid>
 
       <Grid container spacing={3}>

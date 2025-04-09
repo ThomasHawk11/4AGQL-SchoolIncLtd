@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, gql } from '@apollo/client';
 import {
   Container,
@@ -18,8 +18,10 @@ import {
   ListItemSecondaryAction,
   IconButton,
   MenuItem,
+  Box,
 } from '@mui/material';
-import { Add as AddIcon, PersonAdd as PersonAddIcon } from '@mui/icons-material';
+import { Add as AddIcon, PersonAdd as PersonAddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { useAuth } from '../components/AuthContext';
 
 const GET_CLASSES_AND_STUDENTS = gql`
   query GetClassesAndStudents {
@@ -39,6 +41,27 @@ const GET_CLASSES_AND_STUDENTS = gql`
       pseudo
       role
     }
+  }
+`;
+
+const UPDATE_CLASS = gql`
+  mutation UpdateClass($id: ID!, $name: String, $description: String, $year: Int) {
+    updateClass(id: $id, name: $name, description: $description, year: $year) {
+      id
+      name
+      description
+      year
+      students {
+        id
+        pseudo
+      }
+    }
+  }
+`;
+
+const DELETE_CLASS = gql`
+  mutation DeleteClass($id: ID!) {
+    deleteClass(id: $id)
   }
 `;
 
@@ -67,10 +90,15 @@ const ADD_STUDENT_TO_CLASS = gql`
 `;
 
 const Classes = () => {
-  const [open, setOpen] = useState(false);
+  const { user } = useAuth();
+  const isProfessor = user?.role === 'professor';
+
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addStudentDialogOpen, setAddStudentDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [availableStudents, setAvailableStudents] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -81,14 +109,51 @@ const Classes = () => {
   const [createClass] = useMutation(CREATE_CLASS, {
     refetchQueries: [{ query: GET_CLASSES_AND_STUDENTS }],
   });
+  const [updateClass] = useMutation(UPDATE_CLASS, {
+    refetchQueries: [{ query: GET_CLASSES_AND_STUDENTS }],
+  });
+  const [deleteClass] = useMutation(DELETE_CLASS, {
+    refetchQueries: [{ query: GET_CLASSES_AND_STUDENTS }],
+  });
   const [addStudentToClass] = useMutation(ADD_STUDENT_TO_CLASS, {
     refetchQueries: [{ query: GET_CLASSES_AND_STUDENTS }],
   });
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleCreateOpen = () => {
+    setFormData({ name: '', description: '', year: new Date().getFullYear() });
+    setCreateDialogOpen(true);
+  };
 
-  const handleSubmit = async (e) => {
+  const handleCreateClose = () => setCreateDialogOpen(false);
+
+  const handleEditOpen = (class_) => {
+    setSelectedClass(class_);
+    setFormData({
+      name: class_.name,
+      description: class_.description || '',
+      year: class_.year,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditClose = () => {
+    setSelectedClass(null);
+    setEditDialogOpen(false);
+  };
+
+  useEffect(() => {
+    if (data?.users && selectedClass) {
+      const students = data.users.filter(
+        user => user.role === 'student' && 
+        !selectedClass.students.some(s => s.id === user.id)
+      );
+      setAvailableStudents(students);
+    } else {
+      setAvailableStudents([]);
+    }
+  }, [data?.users, selectedClass]);
+
+  const handleCreate = async (e) => {
     e.preventDefault();
     try {
       await createClass({
@@ -97,7 +162,7 @@ const Classes = () => {
           year: parseInt(formData.year),
         },
       });
-      handleClose();
+      handleCreateClose();
       setFormData({ name: '', description: '', year: new Date().getFullYear() });
     } catch (err) {
       console.error('Error creating class:', err);
@@ -107,8 +172,43 @@ const Classes = () => {
   if (loading) return <CircularProgress />;
   if (error) return <Typography color="error">Error: {error.message}</Typography>;
 
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    try {
+      const variables = {
+        id: selectedClass.id,
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        year: parseInt(formData.year)
+      };
+
+      await updateClass({
+        variables: variables
+      });
+      handleEditClose();
+    } catch (err) {
+      console.error('Error updating class:', err);
+      alert('Error updating class: ' + err.message);
+    }
+  };
+
+  const handleDelete = async (classId) => {
+    if (!window.confirm('Are you sure you want to delete this class?')) {
+      return;
+    }
+
+    try {
+      await deleteClass({
+        variables: { id: classId },
+      });
+    } catch (err) {
+      console.error('Error deleting class:', err);
+    }
+  };
+
   const handleAddStudentOpen = (class_) => {
     setSelectedClass(class_);
+    setSelectedStudent('');
     setAddStudentDialogOpen(true);
   };
 
@@ -138,34 +238,61 @@ const Classes = () => {
         <Grid item xs>
           <Typography variant="h4">Classes</Typography>
         </Grid>
-        <Grid item>
-          <Button variant="contained" onClick={handleOpen} startIcon={<AddIcon />}>
-            Add New Class
-          </Button>
-        </Grid>
+        {isProfessor && (
+          <Grid item>
+            <Button variant="contained" onClick={handleCreateOpen} startIcon={<AddIcon />}>
+              Add New Class
+            </Button>
+          </Grid>
+        )}
       </Grid>
 
       <Grid container spacing={3}>
         {data?.classes.map((class_) => (
           <Grid item xs={12} md={6} key={class_.id}>
             <Paper sx={{ p: 2 }}>
-              <Typography variant="h6">{class_.name}</Typography>
-              <Typography color="textSecondary" gutterBottom>
-                Year: {class_.year}
-              </Typography>
-              <Typography variant="body2" paragraph>
-                {class_.description}
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box>
+                  <Typography variant="h6">{class_.name}</Typography>
+                  <Typography color="textSecondary" gutterBottom>
+                    Year: {class_.year}
+                  </Typography>
+                  <Typography variant="body2" paragraph>
+                    {class_.description}
+                  </Typography>
+                </Box>
+                {isProfessor && (
+                  <Box>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleEditOpen(class_)}
+                      sx={{ mr: 1 }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(class_.id)}
+                      disabled={class_.students?.length > 0}
+                      color="error"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                )}
+              </Box>
               
               <Typography variant="subtitle1" gutterBottom>
                 Students
-                <IconButton 
-                  size="small" 
-                  sx={{ ml: 1 }}
-                  onClick={() => handleAddStudentOpen(class_)}
-                >
-                  <PersonAddIcon />
-                </IconButton>
+                {isProfessor && (
+                  <IconButton 
+                    size="small" 
+                    sx={{ ml: 1 }}
+                    onClick={() => handleAddStudentOpen(class_)}
+                  >
+                    <PersonAddIcon />
+                  </IconButton>
+                )}
               </Typography>
               
               <List dense>
@@ -180,7 +307,7 @@ const Classes = () => {
         ))}
       </Grid>
 
-      <Dialog open={open} onClose={handleClose}>
+      <Dialog open={createDialogOpen} onClose={handleCreateClose}>
         <DialogTitle>Create New Class</DialogTitle>
         <DialogContent>
           <TextField
@@ -210,8 +337,8 @@ const Classes = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
+          <Button onClick={handleCreateClose}>Cancel</Button>
+          <Button onClick={handleCreate} variant="contained">
             Create
           </Button>
         </DialogActions>
@@ -228,14 +355,11 @@ const Classes = () => {
             value={selectedStudent}
             onChange={(e) => setSelectedStudent(e.target.value)}
           >
-            {data?.users
-              .filter(user => user.role === 'student' && 
-                !selectedClass?.students.some(s => s.id === user.id))
-              .map((student) => (
-                <MenuItem key={student.id} value={student.id}>
-                  {student.pseudo}
-                </MenuItem>
-              ))}
+            {availableStudents.map((student) => (
+              <MenuItem key={student.id} value={student.id}>
+                {student.pseudo}
+              </MenuItem>
+            ))}
           </TextField>
         </DialogContent>
         <DialogActions>
@@ -246,6 +370,43 @@ const Classes = () => {
             disabled={!selectedStudent}
           >
             Add Student
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={editDialogOpen} onClose={handleEditClose}>
+        <DialogTitle>Edit Class</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Class Name"
+            fullWidth
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          />
+          <TextField
+            margin="dense"
+            label="Description"
+            fullWidth
+            multiline
+            rows={4}
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          />
+          <TextField
+            margin="dense"
+            label="Year"
+            type="number"
+            fullWidth
+            value={formData.year}
+            onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleEditClose}>Cancel</Button>
+          <Button onClick={handleUpdate} variant="contained">
+            Update
           </Button>
         </DialogActions>
       </Dialog>
