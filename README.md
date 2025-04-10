@@ -7,8 +7,41 @@ A GraphQL API for managing school data including users, grades, and classes.
 This project follows a microservices architecture with:
 - Authentication Service: Handles user registration, login, and token management
 - Main Application Service: Handles all other business logic (grades, classes, etc.)
+- GraphQL Mesh Gateway: Federates the GraphQL APIs from different services
 - MySQL Database: Stores all application data
 - PHPMyAdmin: Database management interface
+
+### Architecture Diagram
+
+```mermaid
+flowchart TD
+    Client[Client/Frontend<br>Port: 3000] --> Gateway
+    
+    subgraph Backend
+        Gateway[GraphQL Mesh Gateway<br>Port: 4000] --> AppService
+        Gateway --> AuthService
+        
+        AppService[Application Service<br>Port: 4002] --> MySQL
+        AppService -.-> AuthService
+        
+        AuthService[Authentication Service<br>Port: 4001] --> MySQL
+        
+        MySQL[(MySQL Database<br>Port: 3306)]
+        
+        PHPMyAdmin[PHPMyAdmin<br>Port: 8080] --> MySQL
+    end
+    
+    classDef service fill:#f9f,stroke:#333,stroke-width:2px
+    classDef database fill:#bbf,stroke:#333,stroke-width:2px
+    classDef gateway fill:#bfb,stroke:#333,stroke-width:2px
+    classDef client fill:#fbb,stroke:#333,stroke-width:2px
+    
+    class Gateway gateway
+    class AppService,AuthService service
+    class MySQL database
+    class Client client
+    class PHPMyAdmin service
+```
 
 ## Prerequisites
 
