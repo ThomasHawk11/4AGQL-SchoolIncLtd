@@ -56,6 +56,23 @@ flowchart TD
 4. Access PHPMyAdmin at http://localhost:8080 (username: root, password: password)
 5. Access the frontend at http://localhost:3000
 
+## Identifiants de connexion
+
+### Professeurs
+
+| Email | Mot de passe |
+|-------|-------------|
+| professor1@schoolinc.com | password123 |
+| professor2@schoolinc.com | password123 |
+
+### Étudiants
+
+| Email | Mot de passe |
+|-------|-------------|
+| student1@schoolinc.com | password123 |
+| student2@schoolinc.com | password123 |
+| student3@schoolinc.com | password123 |
+
 ## Seeding the Database
 
 To populate the database with sample data:
