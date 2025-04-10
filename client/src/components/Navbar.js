@@ -4,8 +4,9 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
 const Navbar = () => {
-  const { token, logout } = useAuth();
+  const { token, logout, user } = useAuth();
   const navigate = useNavigate();
+  const isProfessor = user?.role === 'professor';
 
   const handleLogout = () => {
     logout();
@@ -49,6 +50,11 @@ const Navbar = () => {
           <Button color="inherit" component={RouterLink} to="/grades">
             Grades
           </Button>
+          {isProfessor && (
+            <Button color="inherit" component={RouterLink} to="/students">
+              Students
+            </Button>
+          )}
           <Button color="inherit" onClick={handleLogout}>
             Logout
           </Button>

@@ -139,19 +139,28 @@ const resolvers = {
         throw new AuthenticationError('You must be logged in');
       }
       
-      if (user.id !== id) {
+      // Allow professors to update student accounts, but users can only update their own accounts
+      const isProfessor = user.role === 'professor';
+      const isOwnAccount = user.id === parseInt(id);
+      
+      if (!isOwnAccount && !isProfessor) {
         throw new ForbiddenError('You can only update your own account');
       }
-      
-      const updateData = {};
-      if (email) updateData.email = email;
-      if (pseudo) updateData.pseudo = pseudo;
-      if (password) updateData.password = password;
       
       const userToUpdate = await db.User.findByPk(id);
       if (!userToUpdate) {
         throw new UserInputError('User not found');
       }
+      
+      // If not updating own account, ensure the target is a student
+      if (!isOwnAccount && userToUpdate.role !== 'student') {
+        throw new ForbiddenError('Professors can only update student accounts');
+      }
+      
+      const updateData = {};
+      if (email) updateData.email = email;
+      if (pseudo) updateData.pseudo = pseudo;
+      if (password && isOwnAccount) updateData.password = password; // Only allow password changes for own account
       
       await userToUpdate.update(updateData);
       return userToUpdate;
@@ -241,6 +250,29 @@ const resolvers = {
       }
       
       await classObj.addUser(student);
+      return classObj;
+    },
+    
+    removeStudentFromClass: async (_, { classId, studentId }, { user }) => {
+      if (!user || user.role !== 'professor') {
+        throw new ForbiddenError('Only professors can remove students from classes');
+      }
+      
+      const classObj = await db.Class.findByPk(classId);
+      if (!classObj) {
+        throw new UserInputError('Class not found');
+      }
+      
+      const student = await db.User.findByPk(studentId);
+      if (!student) {
+        throw new UserInputError('Student not found');
+      }
+      
+      if (student.role !== 'student') {
+        throw new UserInputError('User is not a student');
+      }
+      
+      await classObj.removeUser(student);
       return classObj;
     },
     

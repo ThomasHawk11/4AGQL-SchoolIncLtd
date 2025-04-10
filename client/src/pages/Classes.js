@@ -89,6 +89,19 @@ const ADD_STUDENT_TO_CLASS = gql`
   }
 `;
 
+const REMOVE_STUDENT_FROM_CLASS = gql`
+  mutation RemoveStudentFromClass($classId: ID!, $studentId: ID!) {
+    removeStudentFromClass(classId: $classId, studentId: $studentId) {
+      id
+      name
+      students {
+        id
+        pseudo
+      }
+    }
+  }
+`;
+
 const Classes = () => {
   const { user } = useAuth();
   const isProfessor = user?.role === 'professor';
@@ -96,8 +109,10 @@ const Classes = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addStudentDialogOpen, setAddStudentDialogOpen] = useState(false);
+  const [removeStudentDialogOpen, setRemoveStudentDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState('');
+  const [studentToRemove, setStudentToRemove] = useState(null);
   const [availableStudents, setAvailableStudents] = useState([]);
   const [formData, setFormData] = useState({
     name: '',
@@ -116,6 +131,9 @@ const Classes = () => {
     refetchQueries: [{ query: GET_CLASSES_AND_STUDENTS }],
   });
   const [addStudentToClass] = useMutation(ADD_STUDENT_TO_CLASS, {
+    refetchQueries: [{ query: GET_CLASSES_AND_STUDENTS }],
+  });
+  const [removeStudentFromClass] = useMutation(REMOVE_STUDENT_FROM_CLASS, {
     refetchQueries: [{ query: GET_CLASSES_AND_STUDENTS }],
   });
 
@@ -218,6 +236,18 @@ const Classes = () => {
     setAddStudentDialogOpen(false);
   };
 
+  const handleRemoveStudentOpen = (classObj, student) => {
+    setSelectedClass(classObj);
+    setStudentToRemove(student);
+    setRemoveStudentDialogOpen(true);
+  };
+
+  const handleRemoveStudentClose = () => {
+    setSelectedClass(null);
+    setStudentToRemove(null);
+    setRemoveStudentDialogOpen(false);
+  };
+
   const handleAddStudent = async () => {
     try {
       await addStudentToClass({
@@ -229,6 +259,20 @@ const Classes = () => {
       handleAddStudentClose();
     } catch (err) {
       console.error('Error adding student:', err);
+    }
+  };
+
+  const handleRemoveStudent = async () => {
+    try {
+      await removeStudentFromClass({
+        variables: {
+          classId: selectedClass.id,
+          studentId: studentToRemove.id,
+        },
+      });
+      handleRemoveStudentClose();
+    } catch (err) {
+      console.error('Error removing student:', err);
     }
   };
 
@@ -299,6 +343,18 @@ const Classes = () => {
                 {class_.students?.map((student) => (
                   <ListItem key={student.id}>
                     <ListItemText primary={student.pseudo} />
+                    {isProfessor && (
+                      <ListItemSecondaryAction>
+                        <IconButton
+                          edge="end"
+                          aria-label="remove"
+                          size="small"
+                          onClick={() => handleRemoveStudentOpen(class_, student)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </ListItemSecondaryAction>
+                    )}
                   </ListItem>
                 ))}
               </List>
@@ -370,6 +426,25 @@ const Classes = () => {
             disabled={!selectedStudent}
           >
             Add Student
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={removeStudentDialogOpen} onClose={handleRemoveStudentClose}>
+        <DialogTitle>Remove Student from Class</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to remove <strong>{studentToRemove?.pseudo}</strong> from <strong>{selectedClass?.name}</strong>?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleRemoveStudentClose}>Cancel</Button>
+          <Button 
+            onClick={handleRemoveStudent} 
+            variant="contained"
+            color="error"
+          >
+            Remove
           </Button>
         </DialogActions>
       </Dialog>

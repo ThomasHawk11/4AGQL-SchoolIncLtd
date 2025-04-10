@@ -110,6 +110,7 @@ const typeDefs = gql`
     updateClass(id: ID!, name: String, description: String, year: Int): Class!
     deleteClass(id: ID!): Boolean!
     addStudentToClass(classId: ID!, studentId: ID!): Class!
+    removeStudentFromClass(classId: ID!, studentId: ID!): Class!
     
     # Course mutations
     createCourse(name: String!, description: String, credits: Int!, classId: ID!): Course!

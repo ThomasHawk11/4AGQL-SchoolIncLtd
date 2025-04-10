@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import Classes from './pages/Classes';
 import Courses from './pages/Courses';
 import Grades from './pages/Grades';
+import Students from './pages/Students';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -75,6 +76,14 @@ const MainContent = () => (
       element={
         <ProtectedRoute>
           <Grades />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="students"
+      element={
+        <ProtectedRoute>
+          <Students />
         </ProtectedRoute>
       }
     />
