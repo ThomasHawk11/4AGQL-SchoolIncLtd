@@ -52,9 +52,7 @@ const Register = () => {
       await registerMutation({
         variables: formData,
       });
-    } catch (err) {
-      // Error is handled by onError callback
-    }
+    } catch (err) {}
   };
 
   return (

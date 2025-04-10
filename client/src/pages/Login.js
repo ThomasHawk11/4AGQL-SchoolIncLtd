@@ -53,9 +53,7 @@ const Login = () => {
       await loginMutation({
         variables: formData,
       });
-    } catch (err) {
-      // Error is handled by onError callback
-    }
+    } catch (err) {}
   };
 
   return (

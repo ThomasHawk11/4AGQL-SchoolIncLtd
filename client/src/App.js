@@ -4,8 +4,6 @@ import { ApolloProvider } from '@apollo/client';
 import { authClient, appClient } from './apolloClient';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
-
-// Components
 import { AuthProvider, useAuth } from './components/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
 import Navbar from './components/Navbar';
@@ -16,9 +14,6 @@ import Grades from './pages/Grades';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
-
-
-// Material-UI theme
 const theme = createTheme({
   palette: {
     mode: 'light',

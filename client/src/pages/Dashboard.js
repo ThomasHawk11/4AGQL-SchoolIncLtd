@@ -79,14 +79,12 @@ const Dashboard = () => {
 
   const isProfessor = user?.role === 'professor';
 
-  // Préparer les données pour le graphique des notes
   let grades = [];
   let courseGrades = {};
 
   let allGrades = [];
 
   if (isProfessor) {
-    // Pour les professeurs, récupérer toutes les notes de tous les élèves
     data.classes.forEach(class_ => {
       class_.students.forEach(student => {
         if (student.grades) {
@@ -101,7 +99,6 @@ const Dashboard = () => {
       });
     });
   } else {
-    // Pour les étudiants, utiliser leurs propres notes
     allGrades = [...(data.myGrades || [])];
     allGrades.forEach(grade => {
       if (!courseGrades[grade.course.name]) {
@@ -111,7 +108,6 @@ const Dashboard = () => {
     });
   }
 
-  // Trier les notes par date
   grades = [...allGrades].sort((a, b) => new Date(parseInt(b.date)) - new Date(parseInt(a.date)));
 
   const chartData = {
