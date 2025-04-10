@@ -24,11 +24,23 @@ ChartJS.register(
 );
 
 const GET_DASHBOARD_DATA = gql`
-  query GetDashboardData {
+  query GetDashboardData($isProfessor: Boolean!) {
     me {
       id
       pseudo
       role
+      classes {
+        id
+        name
+        students {
+          id
+          pseudo
+        }
+        courses {
+          id
+          name
+        }
+      }
     }
     myGrades {
       id
@@ -44,7 +56,7 @@ const GET_DASHBOARD_DATA = gql`
         }
       }
     }
-    classes {
+    classes @include(if: $isProfessor) {
       id
       name
       students {
@@ -70,43 +82,36 @@ const GET_DASHBOARD_DATA = gql`
 `;
 
 const Dashboard = () => {
-  const { loading, error, data } = useQuery(GET_DASHBOARD_DATA);
   const { user } = useAuth();
+  const isProfessor = user?.role === 'professor';
+
+  const { loading, error, data } = useQuery(GET_DASHBOARD_DATA, {
+    variables: { isProfessor }
+  });
   const navigate = useNavigate();
 
   if (loading) return <CircularProgress />;
   if (error) return <Typography color="error">Error: {error.message}</Typography>;
-
-  const isProfessor = user?.role === 'professor';
 
   let grades = [];
   let courseGrades = {};
 
   let allGrades = [];
 
-  if (isProfessor) {
-    data.classes.forEach(class_ => {
-      class_.students.forEach(student => {
-        if (student.grades) {
-          allGrades = [...allGrades, ...student.grades];
-          student.grades.forEach(grade => {
-            if (!courseGrades[grade.course.name]) {
-              courseGrades[grade.course.name] = [];
-            }
-            courseGrades[grade.course.name].push(grade.value);
-          });
-        }
-      });
-    });
-  } else {
-    allGrades = [...(data.myGrades || [])];
-    allGrades.forEach(grade => {
-      if (!courseGrades[grade.course.name]) {
-        courseGrades[grade.course.name] = [];
-      }
-      courseGrades[grade.course.name].push(grade.value);
-    });
-  }
+  allGrades = isProfessor && data.classes
+    ? data.classes.flatMap(class_ =>
+        class_.students.flatMap(student =>
+          student.grades || []
+        )
+      )
+    : [...(data.myGrades || [])];
+
+  allGrades.forEach(grade => {
+    if (!courseGrades[grade.course.name]) {
+      courseGrades[grade.course.name] = [];
+    }
+    courseGrades[grade.course.name].push(grade.value);
+  });
 
   grades = [...allGrades].sort((a, b) => new Date(parseInt(b.date)) - new Date(parseInt(a.date)));
 
@@ -154,7 +159,7 @@ const Dashboard = () => {
             <Typography variant="h6" gutterBottom>
               Classes Overview
             </Typography>
-            {(isProfessor ? data.classes : data.me.classes).map((class_) => (
+            {data.me.classes.map((class_) => (
               <Box 
                 key={class_.id} 
                 sx={{ 
