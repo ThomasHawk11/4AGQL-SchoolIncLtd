@@ -1,0 +1,17 @@
+{
+  "name": "graphql-mesh-gateway",
+  "version": "1.0.0",
+  "description": "GraphQL Mesh Gateway for SchoolInc",
+  "main": "index.js",
+  "scripts": {
+    "start": "mesh dev",
+    "build": "mesh build",
+    "serve": "mesh serve"
+  },
+  "dependencies": {
+    "@graphql-mesh/cli": "^0.82.3",
+    "@graphql-mesh/graphql": "^0.33.0",
+    "@graphql-mesh/merger-stitching": "^0.18.0",
+    "graphql": "^16.6.0"
+  }
+}

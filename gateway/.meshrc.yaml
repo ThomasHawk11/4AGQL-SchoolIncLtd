@@ -1,0 +1,23 @@
+sources:
+  - name: auth-service
+    handler:
+      graphql:
+        endpoint: http://auth-service:4001/graphql
+        operationHeaders:
+          Authorization: '{context.headers.authorization}'
+  - name: app-service
+    handler:
+      graphql:
+        endpoint: http://app-service:4002/graphql
+        operationHeaders:
+          Authorization: '{context.headers.authorization}'
+
+serve:
+  port: 4000
+  hostname: 0.0.0.0
+  playground: true
+  cors:
+    origin: '*'
+    credentials: true
+
+merger: stitching

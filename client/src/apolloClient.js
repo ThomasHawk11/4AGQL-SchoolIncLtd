@@ -14,6 +14,10 @@ export const authClient = new ApolloClient({
 // Apollo Client setup for main application
 const appHttpLink = createHttpLink({
   uri: 'http://localhost:4000/graphql',
+  credentials: 'include',
+  fetchOptions: {
+    mode: 'cors',
+  },
 });
 
 const authLink = setContext((_, { headers }) => {
@@ -32,6 +36,14 @@ export const appClient = new ApolloClient({
   defaultOptions: {
     watchQuery: {
       fetchPolicy: 'cache-and-network',
+      errorPolicy: 'all',
+    },
+    query: {
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all',
+    },
+    mutate: {
+      errorPolicy: 'all',
     },
   },
 });

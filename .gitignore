@@ -31,3 +31,6 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+
+# GraphQL Mesh
+.mesh/

@@ -109,7 +109,7 @@ const Dashboard = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Welcome, {user?.pseudo}!
+        Welcome, {user?.pseudo} !
       </Typography>
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>

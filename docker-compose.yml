@@ -24,10 +24,10 @@ services:
   app-service:
     build: ./app-service
     ports:
-      - "4000:4000"
+      - "4002:4002"
     environment:
       - NODE_ENV=development
-      - PORT=4000
+      - PORT=4002
       - AUTH_SERVICE_URL=http://auth-service:4001
       - DB_HOST=mysql
       - DB_USER=root
@@ -69,12 +69,26 @@ services:
     networks:
       - schoolinc-network
 
+  # GraphQL Mesh Gateway
+  gateway:
+    build: ./gateway
+    ports:
+      - "4000:4000"
+    depends_on:
+      - auth-service
+      - app-service
+    volumes:
+      - ./gateway:/app
+      - /app/node_modules
+    networks:
+      - schoolinc-network
+
   frontend:
     build: ./client
     ports:
       - "3000:3000"
     depends_on:
-      - app-service
+      - gateway
     environment:
       - REACT_APP_API_URL=http://localhost:4000
     networks:
