@@ -14,8 +14,10 @@ import {
   TextField,
   MenuItem,
   CircularProgress,
+  IconButton,
+  Box,
 } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 
 const GET_COURSES_AND_CLASSES = gql`
   query GetCoursesAndClasses {
@@ -51,11 +53,35 @@ const CREATE_COURSE = gql`
   }
 `;
 
+const UPDATE_COURSE = gql`
+  mutation UpdateCourse($id: ID!, $name: String!, $description: String, $credits: Int!, $classId: ID!) {
+    updateCourse(id: $id, name: $name, description: $description, credits: $credits, classId: $classId) {
+      id
+      name
+      description
+      credits
+      class {
+        id
+        name
+      }
+    }
+  }
+`;
+
+const DELETE_COURSE = gql`
+  mutation DeleteCourse($id: ID!) {
+    deleteCourse(id: $id)
+  }
+`;
+
 const Courses = () => {
   const { user } = useAuth();
   const isProfessor = user?.role === 'professor';
 
   const [open, setOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -67,23 +93,80 @@ const Courses = () => {
   const [createCourse] = useMutation(CREATE_COURSE, {
     refetchQueries: [{ query: GET_COURSES_AND_CLASSES }],
   });
+  const [updateCourse] = useMutation(UPDATE_COURSE, {
+    refetchQueries: [{ query: GET_COURSES_AND_CLASSES }],
+  });
+  const [deleteCourse] = useMutation(DELETE_COURSE, {
+    refetchQueries: [{ query: GET_COURSES_AND_CLASSES }],
+  });
 
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleOpen = () => {
+    setEditingCourse(null);
+    setFormData({
+      name: '',
+      description: '',
+      credits: 1,
+      classId: '',
+    });
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setEditingCourse(null);
+  };
+
+  const handleEdit = (course) => {
+    setEditingCourse(course);
+    setFormData({
+      name: course.name,
+      description: course.description || '',
+      credits: course.credits,
+      classId: course.class.id,
+    });
+    setOpen(true);
+  };
+
+  const handleDeleteClick = (course) => {
+    setSelectedCourse(course);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteCourse({
+        variables: { id: selectedCourse.id },
+      });
+      setDeleteConfirmOpen(false);
+      setSelectedCourse(null);
+    } catch (err) {
+      console.error('Error deleting course:', err);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await createCourse({
-        variables: {
-          ...formData,
-          credits: parseInt(formData.credits),
-        },
-      });
+      if (editingCourse) {
+        await updateCourse({
+          variables: {
+            id: editingCourse.id,
+            ...formData,
+            credits: parseInt(formData.credits),
+          },
+        });
+      } else {
+        await createCourse({
+          variables: {
+            ...formData,
+            credits: parseInt(formData.credits),
+          },
+        });
+      }
       handleClose();
       setFormData({ name: '', description: '', credits: 1, classId: '' });
     } catch (err) {
-      console.error('Error creating course:', err);
+      console.error('Error saving course:', err);
     }
   };
 
@@ -109,20 +192,34 @@ const Courses = () => {
         {data.courses.map((course) => (
           <Grid item xs={12} md={6} key={course.id}>
             <Paper sx={{ p: 2 }}>
-              <Typography variant="h6">{course.name}</Typography>
-              <Typography color="textSecondary" gutterBottom>
-                Credits: {course.credits} | Class: {course.class?.name}
-              </Typography>
-              <Typography variant="body2">
-                {course.description}
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography variant="h6">{course.name}</Typography>
+                  <Typography color="textSecondary" gutterBottom>
+                    Credits: {course.credits} | Class: {course.class?.name}
+                  </Typography>
+                  <Typography variant="body2">
+                    {course.description}
+                  </Typography>
+                </Box>
+                {isProfessor && (
+                  <Box>
+                    <IconButton size="small" onClick={() => handleEdit(course)}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDeleteClick(course)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                )}
+              </Box>
             </Paper>
           </Grid>
         ))}
       </Grid>
 
       <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>Create New Course</DialogTitle>
+        <DialogTitle>{editingCourse ? 'Edit Course' : 'Create New Course'}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -167,7 +264,23 @@ const Courses = () => {
         <DialogActions>
           <Button onClick={handleClose}>Cancel</Button>
           <Button onClick={handleSubmit} variant="contained">
-            Create
+            {editingCourse ? 'Save' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+        <DialogTitle>Delete Course</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete the course "{selectedCourse?.name}"?
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+          <Button onClick={handleDeleteConfirm} variant="contained" color="error">
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
