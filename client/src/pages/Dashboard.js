@@ -1,6 +1,7 @@
 import React from 'react';
 import { useQuery, gql } from '@apollo/client';
 import { Container, Grid, Paper, Typography, Box, CircularProgress, Chip } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
 import { Bar } from 'react-chartjs-2';
 import {
@@ -29,24 +30,38 @@ const GET_DASHBOARD_DATA = gql`
       pseudo
       role
     }
-    classes {
-      id
-      name
-      students {
-        id
-        pseudo
-      }
-      courses {
-        id
-        name
-      }
-    }
     myGrades {
       id
       value
       comment
       date
       course {
+        id
+        name
+        class {
+          id
+          name
+        }
+      }
+    }
+    classes {
+      id
+      name
+      students {
+        id
+        pseudo
+        grades {
+          id
+          value
+          comment
+          date
+          course {
+            id
+            name
+          }
+        }
+      }
+      courses {
         id
         name
       }
@@ -57,6 +72,7 @@ const GET_DASHBOARD_DATA = gql`
 const Dashboard = () => {
   const { loading, error, data } = useQuery(GET_DASHBOARD_DATA);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   if (loading) return <CircularProgress />;
   if (error) return <Typography color="error">Error: {error.message}</Typography>;
@@ -64,14 +80,39 @@ const Dashboard = () => {
   const isProfessor = user?.role === 'professor';
 
   // Préparer les données pour le graphique des notes
-  const grades = data.myGrades || [];
-  const courseGrades = {};
-  grades.forEach(grade => {
-    if (!courseGrades[grade.course.name]) {
-      courseGrades[grade.course.name] = [];
-    }
-    courseGrades[grade.course.name].push(grade.value);
-  });
+  let grades = [];
+  let courseGrades = {};
+
+  let allGrades = [];
+
+  if (isProfessor) {
+    // Pour les professeurs, récupérer toutes les notes de tous les élèves
+    data.classes.forEach(class_ => {
+      class_.students.forEach(student => {
+        if (student.grades) {
+          allGrades = [...allGrades, ...student.grades];
+          student.grades.forEach(grade => {
+            if (!courseGrades[grade.course.name]) {
+              courseGrades[grade.course.name] = [];
+            }
+            courseGrades[grade.course.name].push(grade.value);
+          });
+        }
+      });
+    });
+  } else {
+    // Pour les étudiants, utiliser leurs propres notes
+    allGrades = [...(data.myGrades || [])];
+    allGrades.forEach(grade => {
+      if (!courseGrades[grade.course.name]) {
+        courseGrades[grade.course.name] = [];
+      }
+      courseGrades[grade.course.name].push(grade.value);
+    });
+  }
+
+  // Trier les notes par date
+  grades = [...allGrades].sort((a, b) => new Date(parseInt(b.date)) - new Date(parseInt(a.date)));
 
   const chartData = {
     labels: Object.keys(courseGrades),
@@ -117,8 +158,21 @@ const Dashboard = () => {
             <Typography variant="h6" gutterBottom>
               Classes Overview
             </Typography>
-            {data.classes.map((class_) => (
-              <Box key={class_.id} sx={{ mb: 2, p: 1, border: '1px solid #eee', borderRadius: 1 }}>
+            {(isProfessor ? data.classes : data.me.classes).map((class_) => (
+              <Box 
+                key={class_.id} 
+                sx={{ 
+                  mb: 2, 
+                  p: 1, 
+                  border: '1px solid #eee', 
+                  borderRadius: 1,
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: '#f5f5f5'
+                  }
+                }}
+                onClick={() => navigate(`/classes`)}
+              >
                 <Typography variant="subtitle1" gutterBottom>
                   {class_.name}
                 </Typography>
@@ -145,17 +199,24 @@ const Dashboard = () => {
             <Typography variant="h6" gutterBottom>
               Recent Grades
             </Typography>
-            {grades.slice(0, 5).map((grade) => (
+            {grades.length > 0 ? (
+              grades
+                .slice(0, 5)
+                .map((grade) => (
               <Box key={grade.id} sx={{ mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography>{grade.course.name}</Typography>
                 <Chip
                   label={`${grade.value}/20`}
                   color={grade.value >= 10 ? "success" : "error"}
                   variant="outlined"
-                  size="small"
                 />
               </Box>
-            ))}
+            )))
+            : (
+              <Typography color="textSecondary">
+                No grades available yet
+              </Typography>
+            )}
           </Paper>
         </Grid>
         <Grid item xs={12}>

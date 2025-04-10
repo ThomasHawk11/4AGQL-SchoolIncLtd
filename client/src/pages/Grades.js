@@ -25,8 +25,9 @@ import {
   TableHead,
   TableRow,
   TablePagination,
+  IconButton,
 } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { useAuth } from '../components/AuthContext';
 
 const GET_GRADES_DATA = gql`
@@ -109,11 +110,43 @@ const CREATE_GRADE = gql`
   }
 `;
 
+const UPDATE_GRADE = gql`
+  mutation UpdateGrade($id: ID!, $value: Float!, $comment: String) {
+    updateGrade(id: $id, value: $value, comment: $comment) {
+      id
+      value
+      comment
+      date
+      course {
+        id
+        name
+        class {
+          id
+          name
+        }
+      }
+      student {
+        id
+        pseudo
+      }
+    }
+  }
+`;
+
+const DELETE_GRADE = gql`
+  mutation DeleteGrade($id: ID!) {
+    deleteGrade(id: $id)
+  }
+`;
+
 const Grades = () => {
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [selectedCourseFilter, setSelectedCourseFilter] = useState('');
+  const [editingGrade, setEditingGrade] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [selectedGrade, setSelectedGrade] = useState(null);
   const [formData, setFormData] = useState({
     value: '',
     comment: '',
@@ -126,6 +159,12 @@ const Grades = () => {
     fetchPolicy: 'network-only'
   });
   const [createGrade] = useMutation(CREATE_GRADE, {
+    onCompleted: () => refetch()
+  });
+  const [updateGrade] = useMutation(UPDATE_GRADE, {
+    onCompleted: () => refetch()
+  });
+  const [deleteGrade] = useMutation(DELETE_GRADE, {
     onCompleted: () => refetch()
   });
 
@@ -161,21 +200,64 @@ const Grades = () => {
   };
 
   const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleClose = () => {
+    setOpen(false);
+    setEditingGrade(null);
+    setFormData({ value: '', comment: '', courseId: '', studentId: '' });
+  };
+
+  const handleEdit = (grade) => {
+    setEditingGrade(grade);
+    setFormData({
+      value: grade.value,
+      comment: grade.comment || '',
+      courseId: grade.course.id,
+      studentId: grade.student.id,
+    });
+    setOpen(true);
+  };
+
+  const handleDeleteClick = (grade) => {
+    setSelectedGrade(grade);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteGrade({
+        variables: { id: selectedGrade.id },
+      });
+      setDeleteConfirmOpen(false);
+      setSelectedGrade(null);
+    } catch (err) {
+      console.error('Error deleting grade:', err);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await createGrade({
-        variables: {
-          ...formData,
-          value: parseFloat(formData.value),
-        },
-      });
+      const gradeData = {
+        ...formData,
+        value: parseFloat(formData.value),
+      };
+
+      if (editingGrade) {
+        await updateGrade({
+          variables: {
+            id: editingGrade.id,
+            value: gradeData.value,
+            comment: gradeData.comment,
+          },
+        });
+      } else {
+        await createGrade({
+          variables: gradeData,
+        });
+      }
       handleClose();
-      setFormData({ value: '', comment: '', courseId: '', studentId: '' });
     } catch (err) {
-      console.error('Error creating grade:', err);
+      console.error('Error saving grade:', err);
     }
   };
 
@@ -232,6 +314,7 @@ const Grades = () => {
                 <TableCell align="center">Grade</TableCell>
                 <TableCell>Comment</TableCell>
                 <TableCell>Date</TableCell>
+                {isProfessor && <TableCell>Actions</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -271,6 +354,28 @@ const Grades = () => {
                     </TableCell>
                     <TableCell>{grade.comment || '-'}</TableCell>
                     <TableCell>{new Date(parseInt(grade.date)).toLocaleDateString()}</TableCell>
+                    {isProfessor && (
+                      <TableCell>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleEdit(grade)}
+                            color="primary"
+                            title="Edit grade"
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton 
+                            size="small" 
+                            onClick={() => handleDeleteClick(grade)}
+                            color="error"
+                            title="Delete grade"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ));
               })()} 
@@ -301,7 +406,7 @@ const Grades = () => {
       </Paper>
 
       <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>Add New Grade</DialogTitle>
+        <DialogTitle>{editingGrade ? 'Edit Grade' : 'Add New Grade'}</DialogTitle>
         <DialogContent>
           <FormControl fullWidth sx={{ mt: 2 }}>
             <InputLabel>Course</InputLabel>
@@ -338,15 +443,18 @@ const Grades = () => {
 
           <TextField
             margin="dense"
-            label="Grade (0-20)"
+            label="Grade Value"
             type="number"
             fullWidth
             value={formData.value}
-            onChange={(e) => {
-              const value = Math.min(20, Math.max(0, parseFloat(e.target.value)));
-              setFormData({ ...formData, value: value });
+            onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+            inputProps={{
+              min: 0,
+              max: 20,
+              step: 0.5
             }}
-            inputProps={{ min: "0", max: "20", step: "0.5" }}
+            error={formData.value < 0 || formData.value > 20}
+            helperText={formData.value < 0 || formData.value > 20 ? 'Grade must be between 0 and 20' : ''}
           />
 
           <TextField
@@ -360,13 +468,35 @@ const Grades = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleClose} variant="outlined">Cancel</Button>
           <Button 
             onClick={handleSubmit} 
             variant="contained"
-            disabled={!formData.courseId || !formData.studentId || formData.value === ''}
+            startIcon={editingGrade ? <EditIcon /> : <AddIcon />}
+            disabled={!formData.value || (formData.value < 0 || formData.value > 20) || (!editingGrade && (!formData.courseId || !formData.studentId))}
           >
-            Add Grade
+            {editingGrade ? 'Save' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+        <DialogTitle>Delete Grade</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to delete this grade?
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)} variant="outlined">Cancel</Button>
+          <Button 
+            onClick={handleDeleteConfirm} 
+            variant="contained" 
+            color="error"
+            startIcon={<DeleteIcon />}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
