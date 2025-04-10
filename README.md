@@ -21,6 +21,7 @@ This project follows a microservices architecture with:
 2. Run `docker-compose up` to start all services
 3. Access the GraphQL playground at http://localhost:4000/graphql
 4. Access PHPMyAdmin at http://localhost:8080 (username: root, password: password)
+5. Access the frontend at http://localhost:3000
 
 ## Seeding the Database
 

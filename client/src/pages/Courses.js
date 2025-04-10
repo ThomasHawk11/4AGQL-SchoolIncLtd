@@ -15,6 +15,7 @@ import {
   MenuItem,
   CircularProgress,
 } from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
 
 const GET_COURSES_AND_CLASSES = gql`
   query GetCoursesAndClasses {
@@ -97,7 +98,7 @@ const Courses = () => {
         </Grid>
         {isProfessor && (
           <Grid item>
-            <Button variant="contained" onClick={handleOpen}>
+            <Button variant="contained" onClick={handleOpen} startIcon={<AddIcon />}>
               Add New Course
             </Button>
           </Grid>

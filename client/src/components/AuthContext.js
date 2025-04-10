@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { appClient } from '../apolloClient';
 
 const AuthContext = createContext(null);
 
@@ -26,14 +27,18 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user]);
 
-  const login = (newToken, userData) => {
+  const login = async (newToken, userData) => {
     setToken(newToken);
     setUser(userData);
+    // Reset Apollo cache on login
+    await appClient.resetStore();
   };
 
-  const logout = () => {
+  const logout = async () => {
     setToken(null);
     setUser(null);
+    // Reset Apollo cache on logout
+    await appClient.resetStore();
   };
 
   return (

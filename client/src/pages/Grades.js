@@ -35,11 +35,6 @@ const GET_GRADES_DATA = gql`
       id
       role
     }
-    users {
-      id
-      pseudo
-      role
-    }
     courses {
       id
       name
@@ -49,6 +44,24 @@ const GET_GRADES_DATA = gql`
         students {
           id
           pseudo
+          grades {
+            id
+            value
+            comment
+            date
+            course {
+              id
+              name
+              class {
+                id
+                name
+              }
+            }
+            student {
+              id
+              pseudo
+            }
+          }
         }
       }
     }
@@ -83,6 +96,10 @@ const CREATE_GRADE = gql`
       course {
         id
         name
+        class {
+          id
+          name
+        }
       }
       student {
         id
@@ -105,9 +122,11 @@ const Grades = () => {
   });
   const [availableStudents, setAvailableStudents] = useState([]);
 
-  const { loading, error, data } = useQuery(GET_GRADES_DATA);
+  const { loading, error, data, refetch } = useQuery(GET_GRADES_DATA, {
+    fetchPolicy: 'network-only'
+  });
   const [createGrade] = useMutation(CREATE_GRADE, {
-    refetchQueries: [{ query: GET_GRADES_DATA }],
+    onCompleted: () => refetch()
   });
 
   const { user } = useAuth();
@@ -216,10 +235,28 @@ const Grades = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {data?.myGrades
-                .filter(grade => !selectedCourseFilter || grade.course.id === selectedCourseFilter)
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((grade) => (
+              {(() => {
+                let grades = [];
+                if (isProfessor && data?.courses) {
+                  // Pour les professeurs, récupérer toutes les notes de tous les étudiants
+                  data.courses.forEach(course => {
+                    if (course.class?.students) {
+                      course.class.students.forEach(student => {
+                        if (student.grades) {
+                          grades.push(...student.grades);
+                        }
+                      });
+                    }
+                  });
+                } else if (data?.myGrades) {
+                  // Pour les étudiants, utiliser leurs propres notes
+                  grades = data.myGrades;
+                }
+                
+                return grades
+                  .filter(grade => !selectedCourseFilter || grade.course.id === selectedCourseFilter)
+                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                  .map((grade) => (
                   <TableRow key={grade.id}>
                     <TableCell>{grade.course.name}</TableCell>
                     <TableCell>{grade.course.class?.name}</TableCell>
@@ -235,14 +272,27 @@ const Grades = () => {
                     <TableCell>{grade.comment || '-'}</TableCell>
                     <TableCell>{new Date(parseInt(grade.date)).toLocaleDateString()}</TableCell>
                   </TableRow>
-              ))}
+                ));
+              })()} 
             </TableBody>
           </Table>
         </TableContainer>
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={data?.myGrades?.filter(grade => !selectedCourseFilter || grade.course.id === selectedCourseFilter).length || 0}
+          count={
+            isProfessor
+              ? data?.courses?.reduce(
+                  (total, course) =>
+                    total +
+                    (course.class?.students?.reduce(
+                      (studentTotal, student) => studentTotal + (student.grades?.length || 0),
+                      0
+                    ) || 0),
+                  0
+                ) || 0
+              : data?.myGrades?.length || 0
+          }
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
