@@ -248,3 +248,6 @@ docker-compose exec auth-service npm test
 # For app service
 docker-compose exec app-service npm test
 ```
+
+## GitHub Repository
+[4AGQL-SchoolIncLtd](https://github.com/ThomasHawk11/4AGQL-SchoolIncLtd)
